@@ -14,7 +14,13 @@ def download():
     try:
         # run yt-dlp to get direct video URL
         result = subprocess.run(
-            ["yt-dlp", "-f", "mp4", "-g", url],
+            [
+    "yt-dlp",
+    "--cookies", "/etc/secrets/cookies.txt",
+    "-f", "b[ext=mp4]/bv*+ba/b",
+    "-j",
+    url
+],
             capture_output=True, text=True, check=True
         )
         video_url = result.stdout.strip()
