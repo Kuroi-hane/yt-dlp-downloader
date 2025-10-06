@@ -1,7 +1,5 @@
+import os, shutil, subprocess, json
 from flask import Flask, request, jsonify
-import subprocess
-import tempfile
-import os
 
 app = Flask(__name__)
 
@@ -11,26 +9,35 @@ def download():
     if not url:
         return jsonify({"error": "Missing ?url="}), 400
 
-    try:
-        # run yt-dlp to get direct video URL
-        result = subprocess.run(
-            [
-    "yt-dlp",
-    "--cookies", "/etc/secrets/cookies.txt",
-    "--cache-dir", "/tmp",
-    "-f", "b[ext=mp4]/bv*+ba/b",
-    "-j",
-    url
-],
-            capture_output=True, text=True, check=True
-        )
-        video_url = result.stdout.strip()
-        return jsonify({"video_url": video_url})
-    except subprocess.CalledProcessError as e:
-        return jsonify({"error": e.stderr}), 500
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    COOKIE_SRC = "/etc/secrets/cookies.txt"
+    COOKIE_TMP = "/tmp/cookies.txt"
 
-@app.route("/")
-def home():
-    return "yt-dlp downloader API is live 🎥", 200
+    # copy to writable dir
+    try:
+        shutil.copy(COOKIE_SRC, COOKIE_TMP)
+    except Exception:
+        pass
+
+    cmd = [
+        "yt-dlp",
+        "--cookies", COOKIE_TMP,
+        "--no-cache-dir",
+        "--no-overwrites",          # prevents writes
+        "-f", "b[ext=mp4]/bv*+ba/b",
+        "-j", url
+    ]
+
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=90)
+        if result.returncode != 0:
+            raise RuntimeError(result.stderr)
+
+        data = json.loads(result.stdout)
+        return jsonify({
+            "title": data.get("title"),
+            "duration": data.get("duration"),
+            "thumbnail": data.get("thumbnail"),
+            "video_url": data.get("url"),
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)})
