@@ -1,7 +1,11 @@
-import os, shutil, subprocess, json
 from flask import Flask, request, jsonify
+import subprocess, json, shutil, os
 
 app = Flask(__name__)
+
+@app.route("/")
+def home():
+    return "API live"
 
 @app.route("/api/download")
 def download():
@@ -9,26 +13,23 @@ def download():
     if not url:
         return jsonify({"error": "Missing ?url="}), 400
 
+    # Copy cookie file to /tmp
     COOKIE_SRC = "/etc/secrets/cookies.txt"
     COOKIE_TMP = "/tmp/cookies.txt"
-
-    # copy to writable dir
-    try:
+    if os.path.exists(COOKIE_SRC):
         shutil.copy(COOKIE_SRC, COOKIE_TMP)
-    except Exception:
-        pass
 
     cmd = [
         "yt-dlp",
         "--cookies", COOKIE_TMP,
         "--no-cache-dir",
-        "--no-overwrites",          # prevents writes
         "-f", "b[ext=mp4]/bv*+ba/b",
-        "-j", url
+        "-j",
+        url
     ]
 
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=90)
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
         if result.returncode != 0:
             raise RuntimeError(result.stderr)
 
