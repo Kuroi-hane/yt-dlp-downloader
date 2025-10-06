@@ -17,7 +17,7 @@ def download():
             [
     "yt-dlp",
     "--cookies", "/etc/secrets/cookies.txt",
-    "--no-cache-dir",
+    "--cache-dir", "/tmp",
     "-f", "b[ext=mp4]/bv*+ba/b",
     "-j",
     url
